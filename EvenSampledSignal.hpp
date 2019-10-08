@@ -71,7 +71,7 @@ public:
     void Identify () const override {std::cout << "Using EvenSampledSignal methods" << std::endl;}
 
     double BeginTime() const override final {return begin_time;}
-    bool CheckWindow(const double &t1, const double &t2) const { // t1, t2 in sec.
+    bool CheckWindow(const double &t1, const double &t2) const override final { // t1, t2 in sec.
         if (t1>=t2) {
             std::cerr << "Window length <=0. t1="+std::to_string(t1)+", t2="+std::to_string(t2) << std::endl;
             return false;
