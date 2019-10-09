@@ -567,7 +567,8 @@ std::cout << std::endl;
         return;
     }
 
-    void SealPlot(std::string &outfile, const bool &CleanUp=true, const double &XSIZE=-1, const double YSIZE=-1){
+
+    void SealPlot(std::string &outfile, const bool &CleanUp=true, const double &XSIZE=-1, const double &YSIZE=-1){
         // new sizes are in inch, will converted to pts by multipling it by 72.
 
         psxy(outfile,std::vector<double> {0},std::vector<double> {0},"-JX1i/1i -R-1/1/-1/1 -O");
@@ -606,6 +607,15 @@ std::cout << std::endl;
             swap(outfile,newfile);
             remove(newfile.c_str());
         }
+        return;
+    }
+
+    void NewPage(std::string &outfile, const std::string cmd="-P", const double &XSIZE=-1, const double &YSIZE=-1){
+        SealPlot(outfile,false);
+        if (XSIZE>0 && YSIZE>0)
+            set("PS_MEDIA "+std::to_string(XSIZE)+"ix"+std::to_string(YSIZE)+"i");
+        psxy(outfile,std::vector<double> {0},std::vector<double> {0},"-JX1i/1i -R-1/1/-1/1 -K "+cmd);
+        timestamp(outfile);
         return;
     }
 
