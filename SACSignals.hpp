@@ -111,6 +111,16 @@ public:
                          const EvenSampledSignal &item, const double &h1, const double &h2,
                          const int &Flip=0, const std::pair<int,int> &ShiftLimit=
                          {std::numeric_limits<int>::min(),std::numeric_limits<int>::max()}) const;
+    std::pair<std::vector<double>,std::vector<double>>
+        CrossCorrelation(const std::vector<double> &t1, const std::vector<double> &t2,
+                         const std::vector<EvenSampledSignal> &items, const double &h1, const double &h2,
+                         const int &Flip=0, const std::pair<int,int> &ShiftLimit=
+                         {std::numeric_limits<int>::min(),std::numeric_limits<int>::max()}) const;
+    std::pair<std::vector<double>,std::vector<double>>
+        CrossCorrelation(const double &t1, const double &t2,
+                         const std::vector<EvenSampledSignal> &items, const double &h1, const double &h2,
+                         const int &Flip=0, const std::pair<int,int> &ShiftLimit=
+                         {std::numeric_limits<int>::min(),std::numeric_limits<int>::max()}) const;
     void Diff();
     void DumpWaveforms(const std::string &dir=".", const std::string &namingConvention="",
                        const std::string &prefix="", const std::string &seperator="_", const std::string &extension="txt") const;
@@ -341,12 +351,35 @@ SACSignals::CrossCorrelation(const std::vector<double> &t1, const std::vector<do
     }
     return ans;
 }
-
 std::pair<std::vector<double>,std::vector<double>>
 SACSignals::CrossCorrelation(const double &t1, const double &t2,
                              const EvenSampledSignal &item, const double &h1, const double &h2,
                              const int &Flip, const std::pair<int,int> &ShiftLimit) const {
     return CrossCorrelation(std::vector<double> (Size(),t1),std::vector<double> (Size(),t2),item,h1,h2,Flip,ShiftLimit);
+}
+std::pair<std::vector<double>,std::vector<double>>
+SACSignals::CrossCorrelation(const std::vector<double> &t1, const std::vector<double> &t2,
+                             const std::vector<EvenSampledSignal> &items, const double &h1, const double &h2,
+                             const int &Flip, const std::pair<int,int> &ShiftLimit) const {
+    if (Size()!=items.size())
+        throw std::runtime_error("In CrossCorrelation, signal size doesn't match ...");
+    std::pair<std::vector<double>,std::vector<double>> ans;
+    for (std::size_t i=0;i<Size();++i) {
+        auto res=data[i].CrossCorrelation(t1[i],t2[i],items[i],h1,h2,Flip,ShiftLimit);
+        ans.first.push_back(res.first);
+        ans.second.push_back(res.second);
+    }
+    return ans;
+}
+
+std::pair<std::vector<double>,std::vector<double>>
+SACSignals::CrossCorrelation(const double &t1, const double &t2,
+                             const std::vector<EvenSampledSignal> &items, const double &h1, const double &h2,
+                             const int &Flip, const std::pair<int,int> &ShiftLimit) const {
+
+    if (Size()!=items.size())
+        throw std::runtime_error("In CrossCorrelation, signal size doesn't match ...");
+    return CrossCorrelation(std::vector<double> (Size(),t1),std::vector<double> (Size(),t2),items,h1,h2,Flip,ShiftLimit);
 }
 
 void SACSignals::Diff() {

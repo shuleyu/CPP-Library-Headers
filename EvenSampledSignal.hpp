@@ -113,6 +113,8 @@ public:
     double AbsIntegral() const;
     void AddSignal(const EvenSampledSignal &s2, const double &dt=0);
     void Butterworth(const double &f1, const double &f2, const int &order=2, const int &passes=2);
+    SignalCompareResults CompareSignal(const EvenSampledSignal &S2,
+                                       const double &t1=-5, const double &t2=5, const double &AmpLevel=0.1) const;
     std::pair<double,double> CrossCorrelation(const double &t1, const double &t2,
                                               const EvenSampledSignal &S2, const double &h1, const double &h2,
                                               const int &Flip=0, const std::pair<int,int> &ShiftLimit=
@@ -126,6 +128,9 @@ public:
     void Interpolate(const double &dt);
     double SNR(const double &nt1, const double &nt2, const double &st1, const double &st2) const;
     EvenSampledSignal Stretch(const double &h=1) const;
+    EvenSampledSignal StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2,
+                                   const double &h1, const double &h2, const double &ampLevel=0.25) const;
+    EvenSampledSignal StretchToFitHalfWidth(const EvenSampledSignal &s) const;
     void StripSignal(const EvenSampledSignal &s2, const double &dt=0);
     EvenSampledSignal Tstar(const double &ts, const double &tol=1e-3) const;
     void WaterLevelDecon(const EvenSampledSignal &source, const double &wl=0.1);
@@ -413,6 +418,25 @@ void EvenSampledSignal::Butterworth(const double &f1, const double &f2,
     ::Butterworth(amp,GetDelta(),f1,f2,order,passes);
 }
 
+// Compare two signals around their peaks.
+// t1 t2 are time window relative to their own peaks (in seconds, default: t1=-5, t2=5)
+SignalCompareResults EvenSampledSignal::CompareSignal(const EvenSampledSignal &S2,
+                                                      const double &t1, const double &t2, const double &AmpLevel) const{
+    if (fabs(GetDelta()-S2.GetDelta())>0.01*GetDelta())
+        throw std::runtime_error("Comparing two differently sampled signals.");
+
+    if (GetPeak()==(std::size_t)-1 || S2.GetPeak()==(std::size_t)-1)
+        throw std::runtime_error("Comparing two signals, but their peaks are not defined.");
+
+    EvenSampledSignal s1=*this, s2=S2;
+    s1/=fabs(GetAmp()[GetPeak()]);
+    s2/=fabs(S2.GetAmp()[S2.GetPeak()]);
+
+    return ::CompareSignal(s1.GetAmp(),s1.GetPeak(),s2.GetAmp(),s2.GetPeak(),
+                           s1.GetDelta(),t1,t2,AmpLevel);
+}
+
+
 // Cross correlate current signal with input signal within their own window.
 // Notice we are returning the time shift (in second)
 std::pair<double,double> EvenSampledSignal::CrossCorrelation(const double &t1, const double &t2,
@@ -545,6 +569,32 @@ EvenSampledSignal EvenSampledSignal::Stretch(const double &h) const{
     ans.FindPeakAround(PeakTime(),0.5);
 
     return ans;
+}
+
+// Need peaks already defined on *this and s.
+EvenSampledSignal EvenSampledSignal::StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2, const double &h1, const double &h2, const double &ampLevel) const {
+
+    double Min=std::numeric_limits<double>::max(),H=0;
+    for (double h=h1; h<=h2; h+=0.01) {
+        auto TmpData=Stretch(h+1);
+        auto compareResult=TmpData.CompareSignal(s,t1,t2,ampLevel);
+
+        if (Min>fabs(compareResult.Amp_WinDiff)) {
+            Min=fabs(compareResult.Amp_WinDiff);
+            H=h;
+        }
+    }
+    if (H==h1 || H==h2)
+        std::cerr << "In StretchToFit, Hit the trial boundaries: " << h1 << " .. " << H << " .. " << h2 << std::endl;
+    return Stretch(H+1);
+}
+
+EvenSampledSignal EvenSampledSignal::StretchToFitHalfWidth(const EvenSampledSignal &s) const {
+    auto anchor1=this->FindAmplevel(0.5);
+    auto anchor2=s.FindAmplevel(0.5);
+
+    double H=(anchor2.second-anchor2.first)*1.0/(anchor1.second-anchor1.first);
+    return Stretch(H);
 }
 
 // Try to strip the signal s2; shift s2 before the strip if dt is given.
@@ -759,23 +809,6 @@ EvenSampledSignal operator/(const EvenSampledSignal &item,const double &a){
 }
 
 // Other non-member functions.
-
-// Compare two signals around their peaks.
-// t1 t2 are time window relative to their own peaks (in seconds, default: t1=-5, t2=5)
-SignalCompareResults CompareSignal(const EvenSampledSignal &S1, const EvenSampledSignal &S2,
-                                   const double &t1=-5, const double &t2=5,
-                                   const double &AmpLevel=0.1){
-    if (fabs(S1.GetDelta()-S2.GetDelta())>0.01*S1.GetDelta())
-        throw std::runtime_error("Comparing two differently sampled signals.");
-
-    if (S1.GetPeak()==(std::size_t)-1 || S2.GetPeak()==(std::size_t)-1)
-        throw std::runtime_error("Comparing two signals, but their peaks are not defined.");
-
-    auto s1=S1/fabs(S1.GetAmp()[S1.GetPeak()]);
-    auto s2=S2/fabs(S2.GetAmp()[S2.GetPeak()]);
-    return ::CompareSignal(s1.GetAmp(),s1.GetPeak(),s2.GetAmp(),s2.GetPeak(),
-                           s1.GetDelta(),t1,t2,AmpLevel);
-}
 
 std::pair<EvenSampledSignal,EvenSampledSignal>
 StackSignals(const std::vector<EvenSampledSignal> &Signals,
