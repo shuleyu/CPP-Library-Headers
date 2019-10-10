@@ -76,8 +76,7 @@ public:
             std::cerr << "Window length <=0. t1="+std::to_string(t1)+", t2="+std::to_string(t2) << std::endl;
             return false;
         }
-        // Because of round-off errors, let's do this in EvenSampledSignal:
-        if (t1+GetDelta()/2.0<BeginTime() || t2>EndTime()+GetDelta()/2.0) return false;
+        if (t1<BeginTime() || t2>EndTime()) return false;
         else return true;
     }
     void Clear() override {*this=EvenSampledSignal ();}
@@ -87,6 +86,7 @@ public:
     void ShiftTime(const double &t) override final {begin_time+=t;}
     double SignalDuration() const override final {return (Size()<=1?0:GetDelta()*(Size()-1));}
 
+    bool CheckAndCutToNPTS(const double &t1, const std::size_t &NPTS) override final;
     bool CheckAndCutToWindow(const double &t1, const double &t2) override final;
     void FindPeakAround(const double &t, const double &w=5, const bool &positiveOnly=false) override final;
     std::vector<double> GetTime() const override final;
@@ -226,6 +226,24 @@ EvenSampledSignal::EvenSampledSignal (const std::vector<T> &item, const double &
 
 // Member function definitions.
 
+bool EvenSampledSignal::CheckAndCutToNPTS(const double &t1, const std::size_t &NPTS){
+
+    if (t1<BeginTime()) return false;
+    std::size_t d1=LocateTime(t1);
+    if (d1+NPTS>Size()) return false;
+
+    // Cut.
+    std::vector<double> NewAmp(GetAmp().begin()+d1,GetAmp().begin()+d1+NPTS);
+    std::swap(NewAmp,amp);
+
+    if (d1<=GetPeak() && GetPeak()<d1+NPTS) peak-=d1;
+    else peak=-1;
+
+    begin_time+=d1*GetDelta();
+
+    return true;
+}
+
 // Cut the data within a window. If cut failed, don't cut and return false.
 bool EvenSampledSignal::CheckAndCutToWindow(const double &t1, const double &t2){
 
@@ -238,7 +256,7 @@ bool EvenSampledSignal::CheckAndCutToWindow(const double &t1, const double &t2){
     std::vector<double> NewAmp(GetAmp().begin()+d1,GetAmp().begin()+d2);
     std::swap(NewAmp,amp);
 
-    if (GetPeak()<d2 && GetPeak()>=d1) peak-=d1;
+    if (d1<=GetPeak() && GetPeak()<d2) peak-=d1;
     else peak=-1;
 
     begin_time+=d1*GetDelta();

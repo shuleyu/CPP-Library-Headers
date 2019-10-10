@@ -71,6 +71,7 @@ public:    // inherit mode is "private"   --> "private".
     }
     virtual double SignalDuration() const {return EndTime()-BeginTime();}
 
+    virtual bool CheckAndCutToNPTS(const double &t1, const std::size_t &NPTS);     // t1 in sec.
     virtual bool CheckAndCutToWindow(const double &t1, const double &t2);          // t1, t2 in sec.
     virtual void FindPeakAround(const double &t,const double &w=5,
                                 const bool &positiveOnly=false);                   // t, w   in sec.
@@ -169,6 +170,24 @@ DigitalSignal::DigitalSignal (const std::vector<double> &ti, const std::vector<d
 
 
 // Member function/operators definitions.
+bool DigitalSignal::CheckAndCutToNPTS(const double &t1, const std::size_t &NPTS){
+
+    if (t1<BeginTime()) return false;
+    std::size_t d1=LocateTime(t1);
+    if (d1+NPTS>Size()) return false;
+
+    // Cut.
+
+    std::vector<double> time2(GetTime().begin()+d1,GetTime().begin()+d1+NPTS);
+    std::vector<double> amp2(GetAmp().begin()+d1,GetAmp().begin()+d1+NPTS);
+    std::swap(time,time2);
+    std::swap(amp,amp2);
+
+    if (d1<=GetPeak() && GetPeak()<d1+NPTS) peak-=d1;
+    else peak=-1;
+
+    return true;
+}
 
 // Cut the data within a window and return true.
 // If cut failed, do nothing and return false.
@@ -178,7 +197,7 @@ bool DigitalSignal::CheckAndCutToWindow(const double &t1, const double &t2){
 
     // Cut.
     std::size_t d1=LocateTime(t1),d2=LocateTime(t2);
-    if (d2!=Size()) ++d2;
+    ++d2;
 
     std::vector<double> time2(GetTime().begin()+d1,GetTime().begin()+d2);
     std::vector<double> amp2(GetAmp().begin()+d1,GetAmp().begin()+d2);

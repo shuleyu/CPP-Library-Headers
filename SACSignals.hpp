@@ -1064,12 +1064,11 @@ SACSignals::XCorrStack(const std::vector<double> &center_time, const double &t1,
             }
         }
 
-        newEndTime=newBeginTime+GetDelta()*floor((newEndTime-newBeginTime)/GetDelta());
+        std::size_t NPTS=(std::size_t)floor((newEndTime-newBeginTime)/GetDelta());
         for (auto &item: TmpData) {
-            item.CheckAndCutToWindow(newBeginTime,newEndTime);
+            item.CheckAndCutToNPTS(newBeginTime,NPTS);
             item.SetBeginTime(newBeginTime);
         }
-
         std::tie(S,STD)=StackSignals(TmpData,ccc);
     }
 
