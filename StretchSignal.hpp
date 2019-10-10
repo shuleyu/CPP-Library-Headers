@@ -50,6 +50,9 @@ std::vector<double> StretchSignal(const std::vector<T> &p, const double &r){
     std::vector<double> xx(N,0);
     for (int i=0;i<N;++i) xx[i]=i*dt;
 
+    // I hate round-off errors:
+    xx.back()=x.back();
+
     ans=Interpolate(x,p,xx);
 
     return ans;

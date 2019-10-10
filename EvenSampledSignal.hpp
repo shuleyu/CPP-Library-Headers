@@ -396,8 +396,8 @@ void EvenSampledSignal::AddStripSignal(const EvenSampledSignal &s2, const double
     if (fabs(GetDelta()-s2.GetDelta())>1e-5)
         throw std::runtime_error("Tried to "+std::string(flag?"add":"strip")+" signal with different sampling rate.");
     double t1=s2.BeginTime()+dt,t2=s2.EndTime()+dt;
-    if (EndTime()<t1 || t2<BeginTime())
-        return;
+    if (EndTime()<t1 || t2<BeginTime()) return;
+
     t1=std::max(t1,BeginTime());
     t2=std::min(t2,EndTime());
     std::size_t S2Begin=s2.LocateTime(t1-dt);
