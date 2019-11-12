@@ -1052,7 +1052,7 @@ SACSignals::XCorrStack(const std::vector<double> &center_time, const double &t1,
         Tmp.ShiftTimeReferenceToPeak();
         Tmp.NormalizeToPeak();
         Tmp.FlipPeakUp();
-        if (Tmp.CheckAndCutToWindow(t1,t2)){
+        if (Tmp.CheckAndCutToWindow(t1-Tmp.GetDelta(),t2+Tmp.GetDelta())){
             if (Tmp.PeakAmp()>0) S0+=Tmp;
             else S0-=Tmp;
         }
@@ -1063,14 +1063,11 @@ SACSignals::XCorrStack(const std::vector<double> &center_time, const double &t1,
         for (const auto &i:GoodIndex) {
             auto Tmp=data[i];
             Tmp.ShiftTime(-center_time[i]);
-            Tmp.CheckAndCutToWindow(t1,t2);
+            Tmp.CheckAndCutToWindow(t1-Tmp.GetDelta(),t2+Tmp.GetDelta());
             Tmp.NormalizeToSignal();
             S0+=Tmp;
         }
     }
-
-
-    // prepare output.
 
     // Do the cross-correlation loop.
     EvenSampledSignal S=S0,STD;

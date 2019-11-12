@@ -1,5 +1,5 @@
-#ifndef ASU_MARIADB
-#define ASU_MARIADB
+#ifndef ASU_SQLITE
+#define ASU_SQLITE
 
 #include<iostream>
 #include<cstdlib>
@@ -11,26 +11,23 @@
 #include<tuple>
 #include<unistd.h>
 
-extern "C" {
-// Current version: mariadb-connector-c-3.0.4
-#include<mariadb/mysql.h>
-}
+#include<sqlite3.h>
 
 #include<SortWithIndex.hpp>
 #include<ReorderUseIndex.hpp>
 
 /*************************************************
- * This is a wrapper for mariadb-connector-c
+ * This is a wrapper for sqlite3 API.
  *
  * Shule Yu
- * Aug 14 2018
+ * Nov 30 2019
  *
- * Key words: mariadb, mysql
+ * Key words: sqlite 3, mysql
 *************************************************/
 
-namespace MariaDB {
+namespace SQLite {
 
-    std::size_t ISINT=0,ISSTRING=1,ISFLOAT=2;
+    const int ISINT=0,ISSTRING=1,ISFLOAT=2;
 
     class Select {
 
@@ -46,7 +43,7 @@ namespace MariaDB {
         const std::vector<int> &GetInt(const std::string &s) const {
             if (NameToIndex.find(s)==NameToIndex.end())
                 throw std::runtime_error("Field "+s+" does not exist ...");
-            if (TypeCheck.at(s)!=MariaDB::ISINT)
+            if (TypeCheck.at(s)!=SQLite::ISINT)
                 throw std::runtime_error("Field "+s+" is not integer ...");
             return PI[NameToIndex.at(s)];
         }
@@ -54,7 +51,7 @@ namespace MariaDB {
         const std::vector<std::string> &GetString(const std::string &s) const {
             if (NameToIndex.find(s)==NameToIndex.end())
                 throw std::runtime_error("Field "+s+" does not exist ...");
-            if (TypeCheck.at(s)!=MariaDB::ISSTRING)
+            if (TypeCheck.at(s)!=SQLite::ISSTRING)
                 throw std::runtime_error("Field "+s+" is not string ...");
             return PS[NameToIndex.at(s)];
         }
@@ -62,7 +59,7 @@ namespace MariaDB {
         const std::vector<double> &GetDouble(const std::string &s) const{
             if (NameToIndex.find(s)==NameToIndex.end())
                 throw std::runtime_error("Field "+s+" does not exist ...");
-            if (TypeCheck.at(s)!=MariaDB::ISFLOAT)
+            if (TypeCheck.at(s)!=SQLite::ISFLOAT)
                 throw std::runtime_error("Field "+s+" is not float ...");
             return PF[NameToIndex.at(s)];
         }
@@ -80,69 +77,117 @@ namespace MariaDB {
 
         Select()=default;
         Select (const Select &item) = default;
-        Select(const std::string &cmd) {
+        Select(const std::string &dbFile, const std::string &cmd) {
 
+
+            /*
+               Because SQLite3 use affinity data type (type definition is not strict)
+               Some conventions in this API:
+               (Still buggy)
+              
+                  1. The data type (integer, double, string) of each column (in the Select result)
+                     will be decided as the affinity data type interpreted from the 1st row.
+
+                  2. For the following rows, their affinity data type are compared to the 1st row,
+                     actions are taken if the data type doesn't match:
+              
+              
+                      1st row datatype      this row affinity          actions
+              
+                      int                   numeric                    set value to std::numeric_limits<int>::max()
+                      int                   text                       set value to std::numeric_limits<int>::max()
+                      text                  int                        convert int to string.
+                      text                  numeric                    convert numeric to string.
+                      numeric               int                        convert int to double.
+                      numeric               text                       set value to nan.
+
+                      others                                           throw an error.
+
+            */
+
+            // read data.
+            sqlite3 *db;
+            int rc=sqlite3_open(dbFile.c_str(), &db);
+            if(rc){
+                sqlite3_close(db);
+                throw std::runtime_error("Can't open database file: "+dbFile+'\n'+std::string(sqlite3_errmsg(db)));
+            }
+
+            // get data.
+            sqlite3_stmt *stmt;
+            rc=sqlite3_prepare_v2(db, ("SELECT "+cmd).c_str(), -1, &stmt, NULL);
+            if (rc!=SQLITE_OK) throw std::runtime_error(std::string(sqlite3_errmsg(db)));
+
+            // save data.
             std::size_t ICnt=0,SCnt=0,DCnt=0;
-            auto ID=mysql_init(NULL);
+            std::vector<std::size_t> FieldIndexToIndex;
+            std::vector<int> FieldIndexToType;
 
-//             if (!mysql_real_connect(ID,"localhost","","",NULL,0,NULL,0)) {
-            if (!mysql_real_connect(ID,"localhost","shule","",NULL,0,NULL,0)) {
-                std::cerr << mysql_error(ID) << std::endl;
-                throw std::runtime_error("Connet failed...");
-            }
+            m=0;
+            while ((rc=sqlite3_step(stmt)) == SQLITE_ROW) {
 
-            if (mysql_real_query(ID,("select "+cmd).c_str(),("select "+cmd).size())!=0) {
-                std::cerr << mysql_error(ID) << std::endl;
-                throw std::runtime_error("Select failed...");
-            }
+                // decide each column data type from the 1st row.
+                if (m==0) {
+                    n=sqlite3_column_count(stmt);
+                    FieldIndexToIndex.resize(n);
+                    FieldIndexToType.resize(n);
 
-            auto res=mysql_store_result(ID);
-            mysql_close(ID);
+                    for (std::size_t i=0; i<n; ++i) {
 
-            m=mysql_num_rows(res),n=mysql_num_fields(res);
-            auto fields=mysql_fetch_fields(res);
-            std::vector<std::size_t> FieldIndexToIndex(n);
+                        auto fieldName=std::string((const char *)sqlite3_column_name(stmt,i));
 
-            for (std::size_t i=0;i<m;++i) {
 
-                auto row=mysql_fetch_row(res);
-
-                for (std::size_t j=0;j<n;++j) {
-
-                    if (fields[j].type==FIELD_TYPE_FLOAT || fields[j].type==FIELD_TYPE_DOUBLE) {
-                        if (i==0) {
-                            NameToIndex[std::string(fields[j].name)]=DCnt;
-                            TypeCheck[std::string(fields[j].name)]=MariaDB::ISFLOAT;
-                            FieldIndexToIndex[j]=DCnt;
-                            PF.push_back(std::vector<double> ());
-                            ++DCnt;
+                        switch (sqlite3_column_type(stmt,i)) {
+                            case SQLITE_INTEGER : 
+                                FieldIndexToIndex[i]=NameToIndex[fieldName]=ICnt++;
+                                FieldIndexToType[i]=TypeCheck[fieldName]=SQLite::ISINT;
+                                PI.push_back(std::vector<int> ());
+                                break;
+                            case SQLITE_FLOAT: 
+                                FieldIndexToIndex[i]=NameToIndex[fieldName]=DCnt++;
+                                FieldIndexToType[i]=TypeCheck[fieldName]=SQLite::ISFLOAT;
+                                PF.push_back(std::vector<double> ());
+                                break;
+                            case SQLITE_TEXT : 
+                                FieldIndexToIndex[i]=NameToIndex[fieldName]=SCnt++;
+                                FieldIndexToType[i]=TypeCheck[fieldName]=SQLite::ISSTRING;
+                                PS.push_back(std::vector<std::string> ());
+                                break;
+                            default :
+                                throw std::runtime_error("Data type error for column: " + fieldName);
+                                break;
                         }
-                        PF[FieldIndexToIndex[j]].push_back(row[j]?atof(row[j]):0.0/0.0);
-                    }
-                    else if (IS_NUM(fields[j].type)){
-                        if (i==0) {
-                            NameToIndex[std::string(fields[j].name)]=ICnt;
-                            TypeCheck[std::string(fields[j].name)]=MariaDB::ISINT;
-                            FieldIndexToIndex[j]=ICnt;
-                            PI.push_back(std::vector<int> ());
-                            ++ICnt;
-                        }
-                        PI[FieldIndexToIndex[j]].push_back(row[j]?atoi(row[j]):std::numeric_limits<int>::max());
-                    }
-                    else {
-                        if (i==0) {
-                            NameToIndex[std::string(fields[j].name)]=SCnt;
-                            TypeCheck[std::string(fields[j].name)]=MariaDB::ISSTRING;
-                            FieldIndexToIndex[j]=SCnt;
-                            PS.push_back(std::vector<std::string> ());
-                            ++SCnt;
-                        }
-                        PS[FieldIndexToIndex[j]].push_back(row[j]?std::string(row[j]):"NULL");
                     }
                 }
+
+                // Check data type and store the data.
+
+                for (std::size_t i=0; i<n; ++i) {
+
+                    auto type=sqlite3_column_type(stmt,i);
+                    switch (FieldIndexToType[i]) {
+                        case SQLite::ISINT : 
+                            PI[FieldIndexToIndex[i]].push_back((type==SQLITE_INTEGER)?(sqlite3_column_int(stmt,i)):(std::numeric_limits<int>::max()));
+                            break;
+                        case SQLite::ISFLOAT : 
+                            PF[FieldIndexToIndex[i]].push_back((type==SQLITE_TEXT)?(0.0/0.0):(sqlite3_column_double(stmt,i)));
+                            break;
+                        case SQLite::ISSTRING : 
+                            PS[FieldIndexToIndex[i]].push_back((const char *)sqlite3_column_text(stmt,i));
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                ++m;
             }
-            mysql_free_result(res);
+
+            if (rc!=SQLITE_DONE) throw std::runtime_error(std::string(sqlite3_errmsg(db)));
+
+            sqlite3_finalize(stmt);
+            sqlite3_close(db);
         }
+
 
         Select &operator+=(const Select &rhs);
 
@@ -185,9 +230,9 @@ namespace MariaDB {
 
             std::size_t index=item.second;
             std::size_t lhs_index=NameToIndex.at(item.first);
-            if (TypeCheck.at(item.first)==MariaDB::ISINT)
+            if (TypeCheck.at(item.first)==SQLite::ISINT)
                 PI[lhs_index].insert(PI[lhs_index].end(),rhs.PI[index].begin(),rhs.PI[index].end());
-            else if (TypeCheck.at(item.first)==MariaDB::ISSTRING)
+            else if (TypeCheck.at(item.first)==SQLite::ISSTRING)
                 PS[lhs_index].insert(PS[lhs_index].end(),rhs.PS[index].begin(),rhs.PS[index].end());
             else
                 PF[lhs_index].insert(PF[lhs_index].end(),rhs.PF[index].begin(),rhs.PF[index].end());
@@ -196,60 +241,62 @@ namespace MariaDB {
         return *this;
     }
 
-    void Query(const std::string &cmd){
-        auto ID=mysql_init(NULL);
 
-        if (!mysql_real_connect(ID,"localhost","shule","",NULL,0,NULL,0)) {
-//         if (!mysql_real_connect(ID,"127.0.0.1","","",NULL,0,NULL,0)) {
-            std::cerr << mysql_error(ID) << std::endl;
-            throw std::runtime_error("Connet failed...");
+    bool CheckTableExists(const std::string &dbFile, const std::string &Table){
+        auto res=Select(dbFile,"name from sqlite_master where type='table' and name='"+Table+"'");
+        return (res.NRow()==1);
+    }
+
+
+
+
+    void Query(const std::string &dbFile, const std::string &cmd){
+        sqlite3 *db;
+        char *zErrMsg=0;
+        int rc=sqlite3_open(dbFile.c_str(), &db);
+        if(rc){
+            sqlite3_close(db);
+            throw std::runtime_error("Can't open database file: "+dbFile+'\n'+std::string(sqlite3_errmsg(db)));
         }
 
-        if (mysql_query(ID,cmd.c_str())!=0) {
-            std::cerr << mysql_error(ID) << std::endl;
-            throw std::runtime_error("Query failed...");
+        rc = sqlite3_exec(db, cmd.c_str(), nullptr, nullptr, &zErrMsg);
+
+        if (rc!=SQLITE_OK) {
+            sqlite3_free(zErrMsg);
+            throw std::runtime_error(std::string(sqlite3_errmsg(db)));
         }
-        mysql_close(ID);
+        sqlite3_close(db);
+        return;
+    }
+
+    void CopyTableStructure(const std::string &dbFile, const std::string &originalTable, const std::string &newTable){
+        if (CheckTableExists(dbFile,newTable)) {
+            std::cerr << "Table " + newTable + " already exists!" << std::endl;
+            return;
+        }
+
+        auto createCMD=Select(dbFile,"sql FROM sqlite_master WHERE type='table' AND name='"+originalTable+"'").GetString("sql")[0];
+        Query(dbFile,"create table "+newTable+" ("+createCMD.substr(createCMD.find('(')+1));
         return;
     }
 
 
-    bool CheckTableExists(const std::string &DB, const std::string &Table){
-        auto res=Select("* from information_schema.tables where table_schema='"+DB+"' and table_name='"+Table+"'");
-        return (res.NRow()==1);
-    }
+    std::vector<bool> IsString(const std::string &dbFile, const std::string &Table, const std::vector<std::string> &fieldnames) {
 
-    std::vector<bool> IsString(const std::string &DB, const std::string &Table,
-                                const std::vector<std::string> &fieldnames) {
-        auto res=Select("lower(COLUMN_NAME) as names,NUMERIC_PRECISION as precisions from information_schema.columns where table_schema='"+DB+"' and table_name='"+Table+"'");
+        if (fieldnames.empty()) return {};
 
-        std::vector<bool> ans;
-
-        for (auto item:fieldnames) {
-            std::transform(item.begin(),item.end(),item.begin(),::tolower);
-
-            bool flag=false;
-            for (std::size_t i=0;i<res.NRow();++i) {
-                if (item==res.GetString("names")[i]) {
-                    // Use the fact string precision is numeric_limits<int>::max()
-                    // to distinguish character string.
-                    if (res.GetInt("precisions")[i]>1e5) ans.push_back(true);
-                    else ans.push_back(false);
-                    flag=true;
-                    break;
-                }
-            }
-            if (!flag)
-                throw std::runtime_error("Can't find column: "+item+" ...");
+        std::vector<bool> ans(fieldnames.size(),false);
+        for (size_t i=0;i<ans.size(); ++i) {
+            auto res=Select(dbFile,"type from pragma_table_info('"+Table+"') where name='"+fieldnames[i]+"'");
+            ans[i]=(res.GetString("type")[0]=="blob" || res.GetString("type")[0]=="text");
         }
-
         return ans;
     }
 
 
     // number of rows in the table will change.
     // Use NULL as the key word for double data.
-    void LoadData(const std::string &DB, const std::string &Table,
+    void LoadData(const std::string &dbFile, const std::string &Table,
                   const std::vector<std::string> &fieldnames,
                   const std::vector<std::vector<std::string>> &values,
                   const std::size_t &Batch=10000){
@@ -264,20 +311,13 @@ namespace MariaDB {
             if (M!=values[i].size())
                 throw std::runtime_error("Values row counts are inconsistant...");
 
-        auto ID=mysql_init(NULL);
-
-        if (!mysql_real_connect(ID,"localhost","shule","",NULL,0,NULL,0)) {
-//         if (!mysql_real_connect(ID,"127.0.0.1","","",NULL,0,NULL,0)) {
-            std::cerr << mysql_error(ID) << std::endl;
-            throw std::runtime_error("Connet failed...");
-        }
-
-        auto types=IsString(DB,Table,fieldnames);
+        auto types=IsString(dbFile,Table,fieldnames);
 
         size_t p=0,q=Batch;
+
         while (p<M) {
 
-            std::string cmd="insert into "+DB+"."+Table+" (";
+            std::string cmd="insert into "+Table+" (";
             for (std::size_t j=0;j<N;++j) cmd+=fieldnames[j]+",";
             cmd.back()=')';
             cmd+=" values ";
@@ -292,17 +332,12 @@ namespace MariaDB {
             }
             cmd.pop_back();
 
-            if (mysql_query(ID,cmd.c_str())!=0) {
-                std::cerr << mysql_error(ID) << std::endl;
-                throw std::runtime_error("Insert failed ... Too many rows?");
-            }
+            Query(dbFile,cmd);
 
             p=q;
             q+=Batch;
         }
 
-
-        mysql_close(ID);
         return;
     }
 
@@ -320,6 +355,8 @@ namespace MariaDB {
      *    b. if t1 have the column(s) in t2, update the values in t1 using the values from t2.
      *        -- for rows in t1 doesn't appear in t2, do nothing.
     ***********************************************************************************************/
+
+/*
     void UpdateTable(const std::string &t1, const std::string &t2, std::string fieldname) {
 
         std::transform(fieldname.begin(),fieldname.end(),fieldname.begin(),::tolower);
@@ -327,7 +364,6 @@ namespace MariaDB {
         auto ID=mysql_init(NULL);
 
         if (!mysql_real_connect(ID,"localhost","shule","",NULL,0,NULL,0)) {
-//         if (!mysql_real_connect(ID,"127.0.0.1","","",NULL,0,NULL,0)) {
             std::cerr << mysql_error(ID) << std::endl;
             throw std::runtime_error("Connet failed...");
         }
@@ -451,6 +487,7 @@ namespace MariaDB {
 
         return;
     }
+*/
 }
 
 #endif
