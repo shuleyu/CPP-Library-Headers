@@ -522,11 +522,19 @@ std::cout << std::endl;
     }
 
     template<typename T1, typename T2>
-    void psxy(const std::string &outfile, const std::vector<std::pair<T1,T2>> &data, const std::string &cmd){
+    void psxy(const std::string &outfile, const std::vector<std::pair<T1,T2>> &data, const std::string &cmd, const bool &flag=false){
         std::vector<double> X,Y;
-        for (const auto &item: data) {
-            X.push_back(item.first);
-            Y.push_back(item.second);
+        if (!flag) {
+            for (const auto &item: data) {
+                X.push_back(item.first);
+                Y.push_back(item.second);
+            }
+        }
+        else {
+            for (const auto &item: data) {
+                Y.push_back(item.first);
+                X.push_back(item.second);
+            }
         }
         psxy(outfile,X,Y,cmd);
         return;

@@ -129,7 +129,8 @@ public:
     double SNR(const double &nt1, const double &nt2, const double &st1, const double &st2) const;
     EvenSampledSignal Stretch(const double &h=1) const;
     EvenSampledSignal StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2,
-                                   const double &h1, const double &h2, const double &ampLevel=0.25) const;
+                                   const double &h1, const double &h2, const double &ampLevel=0.25,
+                                   const bool &adaptive=false, const std::size_t method=0) const ;
     EvenSampledSignal StretchToFitHalfWidth(const EvenSampledSignal &s) const;
     void StripSignal(const EvenSampledSignal &s2, const double &dt=0);
     EvenSampledSignal Tstar(const double &ts, const double &tol=1e-3) const;
@@ -445,6 +446,7 @@ std::pair<double,double> EvenSampledSignal::CrossCorrelation(const double &t1, c
     // Check window position.
     if (!CheckWindow(t1,t2)) {
         std::cerr << "CrossCorrelation window on signal 1 is not proper." << std::endl;
+        //fprintf(stderr, "%.15lf, %.15lf, %.15lf, %.15lf\n",BeginTime(), t1, t2, EndTime());
         //throw std::runtime_error("CrossCorrelation window on signal 1 is not proper.");
         return {};
     }
@@ -572,20 +574,41 @@ EvenSampledSignal EvenSampledSignal::Stretch(const double &h) const{
 }
 
 // Need peaks already defined on *this and s.
-EvenSampledSignal EvenSampledSignal::StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2, const double &h1, const double &h2, const double &ampLevel) const {
+// method=0: compare use Amp_WinDiff.
+// method=1: compare use Amp_Diff.
+EvenSampledSignal EvenSampledSignal::StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2,
+                                                  const double &h1, const double &h2, const double &ampLevel,
+                                                  const bool &adaptive, const std::size_t method) const {
+
+    if (h1>h2)
+        throw std::runtime_error("In StretchToFit, h1>h2 ...");
 
     double Min=std::numeric_limits<double>::max(),H=0;
     for (double h=h1; h<=h2; h+=0.01) {
         auto TmpData=Stretch(h+1);
         auto compareResult=TmpData.CompareSignal(s,t1,t2,ampLevel);
-
-        if (Min>fabs(compareResult.Amp_WinDiff)) {
-            Min=fabs(compareResult.Amp_WinDiff);
-            H=h;
+        if (method==0) {
+            if (Min>fabs(compareResult.Amp_WinDiff)) {
+                Min=fabs(compareResult.Amp_WinDiff);
+                H=h;
+            }
+        }
+        else if (method==1) {
+            if (Min>fabs(compareResult.Amp_Diff)) {
+                Min=fabs(compareResult.Amp_Diff);
+                H=h;
+            }
         }
     }
-    if (H==h1 || H==h2)
-        std::cerr << "In StretchToFit, Hit the trial boundaries: " << h1 << " .. " << H << " .. " << h2 << std::endl;
+    if (!adaptive) {
+        if (H==h1 || H==h2)
+            std::cerr << "In StretchToFit, Hit the trial boundaries: " << h1 << " .. " << H << " .. " << h2 << " for target: " << s.GetFileName() << std::endl;
+    }
+    else {
+        if (H==h1) return StretchToFit(s, t1, t2, h1-(h2-h1)/2.0, h1, ampLevel, false);
+        if (H==h2) return StretchToFit(s, t1, t2, h2, h2+(h2-h1)/2.0, ampLevel, false);
+    }
+
     return Stretch(H+1);
 }
 

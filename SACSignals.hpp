@@ -135,8 +135,10 @@ public:
     std::vector<double> GetDistances(const std::vector<std::size_t> &indices=std::vector<std::size_t> ()) const;
     std::vector<std::string> GetFileList() const;
     std::vector<std::string> GetNetworkNames() const;
+    std::string GetNetworkName(const std::size_t &index) const;
     std::vector<std::string> GetSACFiles() const;
     std::vector<std::string> GetStationNames() const;
+    std::string GetStationName(const std::size_t &index) const;
     std::vector<double> GetTravelTimes(const std::string &phase,
                                        const std::vector<std::size_t> &indices=std::vector<std::size_t> ()) const;
     std::vector<std::pair<std::vector<double>,std::vector<double>>>
@@ -176,6 +178,9 @@ public:
                             const double &st1, const double &st2,
                             const std::vector<double> &na=std::vector<double> (),
                             const std::vector<double> &sa=std::vector<double> ()) const;
+    void StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2,
+                      const double &h1, const double &h2, const double &ampLevel=0.25,
+                      const bool &adaptive=false, const std::size_t method=0);
     void StripSignal(const EvenSampledSignal &s2, const std::vector<double> &dt={});
     void StripSignal(const std::vector<EvenSampledSignal> &s, const std::vector<double> &dt={});
     void WaterLevelDecon(const EvenSampledSignal &s, const double &wl=0.1);
@@ -575,11 +580,21 @@ std::vector<std::string> SACSignals::GetNetworkNames() const{
     return ans;
 }
 
+std::string SACSignals::GetNetworkName(const std::size_t &index) const{
+    if (index>Size()) return "";
+    return mdata[index].network;
+}
+
 std::vector<std::string> SACSignals::GetStationNames() const{
     std::vector<std::string> ans;
     for (const auto &item:mdata)
         ans.push_back(item.stnm);
     return ans;
+}
+
+std::string SACSignals::GetStationName(const std::size_t &index) const{
+    if (index>Size()) return "";
+    return mdata[index].stnm;
 }
 
 
@@ -908,6 +923,21 @@ std::vector<double> SACSignals::SNR(const double &nt1, const double &nt2,
     return ans;
 }
 
+void SACSignals::StretchToFit(const EvenSampledSignal &s, const double &t1, const double &t2,
+                              const double &h1, const double &h2, const double &ampLevel,
+                              const bool &adaptive, const std::size_t method){
+
+    if (!SameSamplingRate())
+        throw std::runtime_error("In StretchToFit, SAC signals have different sample rate.");
+    if (data[0].GetDelta()!=s.GetDelta())
+        throw std::runtime_error("In StretchToFit, input signals have different sample rate.");
+
+    for (std::size_t i=0;i<Size();++i)
+        data[i]=data[i].StretchToFit(s,t1,t2,h1,h2,ampLevel,adaptive,method);
+
+    return;
+}
+
 void SACSignals::StripSignal(const EvenSampledSignal &s2, const std::vector<double> &dt){
 
     if (!dt.empty() && Size()!=dt.size())
@@ -1052,7 +1082,7 @@ SACSignals::XCorrStack(const std::vector<double> &center_time, const double &t1,
         Tmp.ShiftTimeReferenceToPeak();
         Tmp.NormalizeToPeak();
         Tmp.FlipPeakUp();
-        if (Tmp.CheckAndCutToWindow(t1-Tmp.GetDelta(),t2+Tmp.GetDelta())){
+        if (Tmp.CheckAndCutToWindow(t1,t2)){
             if (Tmp.PeakAmp()>0) S0+=Tmp;
             else S0-=Tmp;
         }
@@ -1063,11 +1093,15 @@ SACSignals::XCorrStack(const std::vector<double> &center_time, const double &t1,
         for (const auto &i:GoodIndex) {
             auto Tmp=data[i];
             Tmp.ShiftTime(-center_time[i]);
-            Tmp.CheckAndCutToWindow(t1-Tmp.GetDelta(),t2+Tmp.GetDelta());
+            Tmp.CheckAndCutToWindow(t1,t2);
             Tmp.NormalizeToSignal();
             S0+=Tmp;
         }
     }
+    S0.SetBeginTime(t1);
+    
+
+    // prepare output.
 
     // Do the cross-correlation loop.
     EvenSampledSignal S=S0,STD;
