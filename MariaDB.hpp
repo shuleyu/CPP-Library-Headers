@@ -249,6 +249,7 @@ namespace MariaDB {
 
     // number of rows in the table will change.
     // Use NULL as the key word for double data.
+    // For primary key existing rows, replace them.
     void LoadData(const std::string &DB, const std::string &Table,
                   const std::vector<std::string> &fieldnames,
                   const std::vector<std::vector<std::string>> &values,
@@ -277,7 +278,7 @@ namespace MariaDB {
         size_t p=0,q=Batch;
         while (p<M) {
 
-            std::string cmd="insert into "+DB+"."+Table+" (";
+            std::string cmd="replace into "+DB+"."+Table+" (";
             for (std::size_t j=0;j<N;++j) cmd+=fieldnames[j]+",";
             cmd.back()=')';
             cmd+=" values ";

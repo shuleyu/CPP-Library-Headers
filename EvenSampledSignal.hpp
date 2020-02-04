@@ -616,7 +616,7 @@ EvenSampledSignal EvenSampledSignal::StretchToFitHalfWidth(const EvenSampledSign
     auto anchor1=this->FindAmplevel(0.5);
     auto anchor2=s.FindAmplevel(0.5);
 
-    double H=(anchor2.second-anchor2.first)*1.0/(anchor1.second-anchor1.first);
+    double H=((anchor2.second-anchor2.first)*s.GetDelta())/((anchor1.second-anchor1.first)*GetDelta());
     return Stretch(H);
 }
 
