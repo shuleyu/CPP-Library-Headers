@@ -333,6 +333,64 @@ std::cout << std::endl;
         return;
     }
 
+    // psxyz with 4 columns
+    // fourth column: symbol size.
+    template <typename T>
+    void psxyz(const std::string &outfile, const std::vector<std::vector<T>> &Data,
+               const std::string &cmd){
+
+
+        // Check array size.
+        if (Data.empty()) {
+            return;
+        }
+        std::size_t m=Data.size(),n=Data[0].size(); // m rows, n columns
+        if (n != 4) {
+            throw std::runtime_error("In " + std::string(__func__) + ", currently can only handle 4-column data.");
+        }
+        for (std::size_t i=0;i<m;++i) {
+            if (Data[i].size()!=n) {
+                throw std::runtime_error("In "+std::string(__func__)
+                                         +", input data column size don't match.");
+            }
+        }
+
+        void *API=GMT_Create_Session(__func__,2,0,NULL);
+
+        // Set vector dimensions..
+        uint64_t par[2];
+        par[0]=n;  // x,y,z,... value (n columns).
+        par[1]=m;  // (m of rows).
+
+        // Create plot data.
+        GMT_VECTOR *vec=(GMT_VECTOR *)GMT_Create_Data(API,GMT_IS_VECTOR,GMT_IS_POINT,
+                                                      0,par,NULL,NULL,0,-1,NULL);
+
+        // Inject data.
+        for (std::size_t i=0;i<n;++i) {
+            double *X = new double [m];
+            for (std::size_t j=0;j<m;++j)
+                X[j]=Data[j][i];
+            GMT_Put_Vector(API,vec,i,GMT_DOUBLE,X);
+        }
+
+        // Get the virtual file.
+        char filename[20];
+        GMT_Open_VirtualFile(API,GMT_IS_VECTOR,GMT_IS_POINT,GMT_IN,vec,filename);
+
+        // Plot.
+        char *command=strdup(("-<"+std::string(filename)+" "+cmd+" ->>"+outfile).c_str());
+        GMT_Call_Module(API,"psxyz",GMT_MODULE_CMD,command);
+
+        // Free spaces (Xs seem to be deleted by GMT_Destroy_Session?).
+        delete [] command;
+        GMT_Close_VirtualFile(API,filename);
+        GMT_Destroy_Data(API,&vec);
+        GMT_Destroy_Session(API);
+
+        return;
+    }
+
 
     // gmt psxy.
     template <typename T>

@@ -34,7 +34,9 @@ double PNorm(const T XBegin, const T XEnd, const int &p){
 
     double Sum=0;
 
-    for (auto it=XBegin;it!=XEnd;++it) Sum+=pow(fabs(*it),p);
+    for (auto it=XBegin;it!=XEnd;++it) {
+        Sum+=pow(fabs(*it),p);
+    }
 
     return pow(Sum,1.0/p);
 }

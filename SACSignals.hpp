@@ -58,13 +58,13 @@ struct SACMetaData{
 };
 
 std::ostream &operator<<(std::ostream &os, const SACMetaData &item){
-    std::cout << "Network: |" << item.network << "|\n";
-    std::cout << "StationName: |" << item.stnm << "|\n";
-    std::cout << "Az: |" << item.az << "|\n";
-    std::cout << "Gcarc: |" << item.gcarc << "|\n";
-    std::cout << "TravelTimes: " << '\n';
+    os << "Network: |" << item.network << "|\n";
+    os << "StationName: |" << item.stnm << "|\n";
+    os << "Az: |" << item.az << "|\n";
+    os << "Gcarc: |" << item.gcarc << "|\n";
+    os << "TravelTimes: " << '\n';
     for (const auto &item2:item.tt)
-        std::cout << "    " << item2.first << "  -  " << item2.second << " sec.\n";
+        os << "    " << item2.first << "  -  " << item2.second << " sec.\n";
     return os;
 }
 

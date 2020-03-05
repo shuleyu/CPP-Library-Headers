@@ -47,7 +47,9 @@ double PNormErr(const T1 XBegin, const T1 XEnd, const T2 YBegin, const T2 YEnd, 
     }
 
     double Sum=0;
-    for (std::size_t i=0;i<m;++i) Sum+=pow(fabs((*std::next(XBegin,i))-(*std::next(YBegin,i))),p);
+    for (std::size_t i=0;i<m;++i) {
+        Sum+=pow(fabs((*std::next(XBegin,i))-(*std::next(YBegin,i))),p);
+    }
 
     return pow(Sum,1.0/p)/PNorm(YBegin,YEnd,p);
 }

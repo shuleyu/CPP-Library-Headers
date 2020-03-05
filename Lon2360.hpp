@@ -20,10 +20,16 @@
 inline double Lon2360(const double &lon){
 
     double ans=lon;
-    if (ans>=0) ans-=360.0*((int)(ans/360));
-    else ans+=360.0*(1+(int)(-ans/360));
 
-    if (ans>=360) ans=0;
+    if (0 <= ans && ans <= 360.0) {
+        return ans;
+    }
+    else if (ans >= 0) {
+        ans -= 360.0 * ((int)(ans / 360));
+    }
+    else {
+        ans += 360.0 * (1 + (int)(-ans / 360));
+    }
     return ans;
 }
 

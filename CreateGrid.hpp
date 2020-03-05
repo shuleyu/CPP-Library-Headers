@@ -68,7 +68,7 @@
 std::vector<double> CreateGrid(const double &lowerbound, const double &upperbound,
                                const double &Para, const int mode){
 
-    double upperBound=upperbound,lowerBound=lowerbound;
+    double upperBound=upperbound, lowerBound=lowerbound;
     bool reverseAns=false;
 
 
@@ -83,11 +83,20 @@ std::vector<double> CreateGrid(const double &lowerbound, const double &upperboun
         int N=Para;
         if (N<=0) throw std::runtime_error("NPTS < 0 ...\n");
 
-        double Inc=1.0*(upperBound-lowerBound)/(N-1);
+        double Inc = 1.0 * (upperBound - lowerBound) / (N - 1);
 
-        std::vector<double> ans(N,lowerBound);
-        for (int i=1;i<N;++i) ans[i]=ans[i-1]+Inc;
-        if (reverseAns) std::reverse(ans.begin(),ans.end());
+        std::vector<double> ans(N, lowerBound);
+
+        for (int i = 1 ; i < N; ++i) {
+            ans[i] = ans[i-1] + Inc;
+        }
+
+        ans[N - 1] = upperBound;
+
+        if (reverseAns) {
+            std::reverse(ans.begin(), ans.end());
+        }
+
         return ans;
     }
     if (mode==1 || mode==-1){
