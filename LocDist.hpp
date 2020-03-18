@@ -29,13 +29,13 @@
 double LocDist(const double &lon1, const double &lat1, const double &r1,
                const double &lon2, const double &lat2, const double &r2){
 
-    auto res1=LL2TP(lon1,lat1);
-    auto res2=LL2TP(lon2,lat2);
+    auto res1 = LL2TP(lon1, lat1);
+    auto res2 = LL2TP(lon2, lat2);
 
-    auto p1=Sph2Cart(r1,res1.first,res1.second);
-    auto p2=Sph2Cart(r2,res2.first,res2.second);
+    auto p1 = Sph2Cart(r1, res1.first, res1.second);
+    auto p2 = Sph2Cart(r2, res2.first, res2.second);
 
-    return DotDist(p1[0],p1[1],p1[2],p2[0],p2[1],p2[2]);
+    return DotDist(p1[0], p1[1], p1[2], p2[0], p2[1], p2[2]);
 }
 
 #endif

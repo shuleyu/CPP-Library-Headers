@@ -34,7 +34,7 @@
  * Key words: geography, coordinates, convertion.
 *****************************************************/
 
-inline std::pair<double,double> LL2TP(const double &lon, const double &lat){
+inline std::pair<double, double> LL2TP(const double &lon, const double &lat){
 
     // Deal with latitude, theta.
     // Check latitude.
@@ -43,10 +43,10 @@ inline std::pair<double,double> LL2TP(const double &lon, const double &lat){
         return {};
     }
 
-    if (lat==90) return {0.0,0.0};
-    else if (lat==-90) return {M_PI,0.0};
+    if (lat == 90) return {0.0,0.0};
+    else if (lat == -90) return {M_PI,0.0};
 
-    return {M_PI/2-lat*M_PI/180,Lon2180(lon)*M_PI/180};
+    return {M_PI/2 - lat * M_PI / 180, Lon2180(lon) * M_PI / 180};
 }
 
 #endif

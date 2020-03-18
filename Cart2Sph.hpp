@@ -27,7 +27,7 @@
 ***********************************************************/
 
 inline std::vector<double> Cart2Sph(const double &x, const double &y, const double &z){
-    return{sqrt(x*x+y*y+z*z),atan2(sqrt(1.0*x*x+y*y),1.0*z),atan2(1.0*y,1.0*x)};
+    return{sqrt(x * x + y * y + z * z), atan2(sqrt(1.0 * x * x + y * y), 1.0 * z), atan2(1.0 * y, 1.0 * x)};
 }
 
 #endif

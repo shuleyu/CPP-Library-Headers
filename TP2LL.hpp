@@ -34,7 +34,7 @@
  * Key words: geography, coordinates, convertion.
 *****************************************************/
 
-std::pair<double,double> TP2LL(const double &theta,const double &phi){
+std::pair<double,double> TP2LL(const double &theta, const double &phi){
 
     // Deal with latitude, theta.
     // Check theta.
@@ -46,7 +46,7 @@ std::pair<double,double> TP2LL(const double &theta,const double &phi){
     if (theta==0.0) return {0.0,90.0};
     else if (theta==M_PI) return {0.0,-90.0};
 
-    return {Lon2180(phi*180/M_PI),(M_PI/2-theta)*180/M_PI};
+    return {Lon2180(phi*180/M_PI), (M_PI/2-theta)*180/M_PI};
 }
 
 #endif
