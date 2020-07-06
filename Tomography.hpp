@@ -49,7 +49,10 @@ public:
         // open the nc file.
         int retval,ncid;
         retval=nc_open(nc_filename.c_str(),NC_NOWRITE,&ncid);
-        if (retval!=0) throw std::runtime_error(nc_strerror(retval));
+        if (retval!=0) {
+
+            throw std::runtime_error("nc file open error, " + nc_strerror(retval));
+        }
 
 
         // get depth length and data.
