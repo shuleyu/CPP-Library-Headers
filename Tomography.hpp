@@ -51,7 +51,7 @@ public:
         retval=nc_open(nc_filename.c_str(),NC_NOWRITE,&ncid);
         if (retval!=0) {
 
-            throw std::runtime_error("nc file open error, " + nc_strerror(retval));
+            throw std::runtime_error(std::string("nc file open error, ") + nc_strerror(retval));
         }
 
 
