@@ -344,19 +344,23 @@ std::pair<std::size_t,std::size_t> DigitalSignal::FindAmplevel(const double &lev
     if (level<0 || level>=1)
         throw std::runtime_error("Amplitude level is not in [0,1) ...");
 
-    std::pair<std::size_t,std::size_t> ans{0,Size()-1};
-    double AmpThreshold=level*fabs(amp[GetPeak()]);
-    for (std::size_t i=GetPeak();i<Size();++i)
-        if (fabs(amp[i])<AmpThreshold) {
-            ans.second=i-1;
-            break;
-        }
+    std::pair<std::size_t,std::size_t> ans{0, Size()-1};
+    double AmpThreshold = level * amp[GetPeak()];
 
-    for (int i=GetPeak();i>=0;--i)
-        if (fabs(amp[i])<AmpThreshold) {
-            ans.first=i+1;
+    for (std::size_t i = GetPeak();i + 1 < Size(); ++i) {
+        if ((amp[i] > AmpThreshold) ^ (amp[i + 1] > AmpThreshold)) {
+            ans.second = i;
             break;
         }
+    }
+
+    for (int i = GetPeak(); i > 0; --i) {
+        if ((amp[i] > AmpThreshold) ^ (amp[i - 1] > AmpThreshold)) {
+            ans.first = i;
+            break;
+        }
+    }
+
     return ans;
 }
 

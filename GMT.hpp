@@ -629,7 +629,7 @@ std::cout << std::endl;
     void BeginPlot(const std::string &outfile, const std::string cmd="-P", const std::string &additionalText=""){
         remove(outfile.c_str());
         psxy(outfile,std::vector<double> {0},std::vector<double> {0},"-JX1i/1i -R-1/1/-1/1 -K "+cmd);
-        timestamp(outfile,additionalText);
+//         timestamp(outfile,additionalText);
         return;
     }
 
@@ -696,7 +696,7 @@ std::cout << std::endl;
 
         set("PS_MEDIA "+std::to_string(XSIZE)+"ix"+std::to_string(YSIZE)+"i");
         set("MAP_FRAME_PEN 0.4p,black");
-        set("MAP_GRID_PEN_PRIMARY 0.4p,gray");
+        set("MAP_GRID_PEN_PRIMARY 0.4p,gray,.");
         set("FONT_ANNOT 8p");
         set("MAP_ANNOT_OFFSET_PRIMARY 6p");
         set("FONT_LABEL 12p");
