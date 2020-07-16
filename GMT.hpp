@@ -681,7 +681,7 @@ std::cout << std::endl;
         if (XSIZE>0 && YSIZE>0)
             set("PS_MEDIA "+std::to_string(XSIZE)+"ix"+std::to_string(YSIZE)+"i");
         psxy(outfile,std::vector<double> {0},std::vector<double> {0},"-JX1i/1i -R-1/1/-1/1 -K "+cmd);
-        timestamp(outfile);
+//         timestamp(outfile);
         return;
     }
 
@@ -709,8 +709,15 @@ std::cout << std::endl;
         return outfile;
     }
 
-    void ps2pdf(const std::string &filename, const std::string &output, const bool &removePsFile=true){
-        ShellExec("ps2pdf "+filename+" "+output.substr(0,output.find_last_of("."))+".pdf");
+    void ps2pdf(const std::string &filename, const std::string &output, const bool &removePsFile=true, const bool &appendSuffix = false){
+        if (appendSuffix) {
+
+            ShellExec("ps2pdf " + filename + " " + output + ".pdf");
+        }
+        else {
+
+            ShellExec("ps2pdf " + filename + " " + output.substr(0, output.find_last_of(".")) + ".pdf");
+        }
         if (removePsFile) remove(filename.c_str());
         return;
     }
