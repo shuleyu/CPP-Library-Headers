@@ -81,6 +81,7 @@ public:
     SACSignals ();
     SACSignals (const SACSignals &item, const std::vector<std::size_t> &indices={});
     SACSignals (const SACSignals &item, const std::set<std::size_t> &indices);
+    SACSignals (const std::vector<EvenSampledSignal> &signals, const std::vector<SACMetaData> &metadatas);
     SACSignals (const std::string &infile);                 // a file contains path(s) to SAC file(s).
     SACSignals (const std::vector<std::string> &infiles);   // a vector contains paths(s) to SAC file(s).
     ~SACSignals () = default;
@@ -246,6 +247,19 @@ SACSignals::SACSignals (const SACSignals &item, const std::vector<std::size_t> &
 
 SACSignals::SACSignals (const SACSignals &item, const std::set<std::size_t> &indices) {
     *this=SACSignals(item, std::vector<size_t> (indices.begin(),indices.end()));
+    sorted_by="None";
+}
+
+SACSignals::SACSignals (const std::vector<EvenSampledSignal> &signals, const std::vector<SACMetaData> &metadatas) {
+
+    if (signals.size() != metadatas.size()) {
+
+        throw std::runtime_error("Input signals and meta data have different size.");
+    }
+
+    data = signals;
+    mdata = metadatas;
+    file_list_name="None";
     sorted_by="None";
 }
 
@@ -751,7 +765,11 @@ void SACSignals::OutputToSAC(const std::string &prefix, const std::vector<std::s
     std::size_t k=0;
     for (const std::size_t &i:ind) {
 
-        std::string outfile=prefix+std::to_string(i+1)+".sac";
+        std::string outfile = prefix + std::to_string(i+1)+".sac";
+        if (ind.size() == 1) {
+
+            outfile = prefix + ".sac";
+        }
         npts=data[i].Size();
         dt=data[i].GetDelta();
         bt=data[i].BeginTime();
@@ -774,13 +792,44 @@ void SACSignals::OutputToSAC(const std::string &prefix, const std::vector<std::s
         setlhv((char *)"lcalda", &lfalse, &nerr, -1);
 
         // headers.
-        if (k<F.size()) {
+        if (F.empty() && M.empty()) {
+
+            const auto &item = GetMData()[i];
+            char st[6]="kstnm",kt[7]="knetwk",gc[6]="gcarc",ede[5]="evdp",elo[5]="evlo",ela[5]="evla",slo[5]="stlo",sla[5]="stla",azimuth[3]="az";
+
+            setkhv(st, (char *)item.stnm.c_str(), &nerr, -1, -1);
+            setkhv(kt, (char *)item.network.c_str(), &nerr, -1, -1);
+
+            float tmpval;
+
+            tmpval = item.gcarc;
+            setfhv(gc, &tmpval, &nerr, -1);
+
+            tmpval = item.evde;
+            setfhv(ede, &tmpval, &nerr, -1);
+
+            tmpval = item.evlo;
+            setfhv(elo, &tmpval, &nerr, -1);
+
+            tmpval = item.evla;
+            setfhv(ela, &tmpval, &nerr, -1);
+
+            tmpval = item.stlo;
+            setfhv(slo, &tmpval, &nerr, -1);
+
+            tmpval = item.stla;
+            setfhv(sla, &tmpval, &nerr, -1);
+
+            tmpval = item.az;
+            setfhv(azimuth, &tmpval, &nerr, -1);
+        }
+        else if (k<F.size()) {
             for (const auto &item: F[k]){
                 float tmpval=item.second;
                 setfhv((char *)item.first.c_str(), &tmpval, &nerr, -1);
             }
         }
-        if (k<M.size()) {
+        else if (k<M.size()) {
             for (const auto &item: M[k]){
                 setkhv((char *)item.first.c_str(), (char *)item.second.c_str(), &nerr, -1, -1);
             }
