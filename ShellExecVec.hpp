@@ -6,6 +6,8 @@
 #include<memory>
 #include<vector>
 
+#define readSize 500
+
 /*************************************************
  * This C++ template returns the stdout from the
  * execution of given shell command.
@@ -25,7 +27,7 @@
 std::vector<std::string> ShellExecVec(const std::string &cmd) {
 
     std::vector<std::string> ans;
-    std::array<char,128> buffer;
+    std::array<char, readSize> buffer;
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
 
     if (!pipe) {
@@ -34,7 +36,7 @@ std::vector<std::string> ShellExecVec(const std::string &cmd) {
     }
 
     while (!feof(pipe.get())) {
-        if (fgets(buffer.data(), 128, pipe.get()) != NULL)
+        if (fgets(buffer.data(), readSize, pipe.get()) != NULL)
             ans.push_back(std::string(buffer.data()));
     }
 
