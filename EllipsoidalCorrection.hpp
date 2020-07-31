@@ -7,6 +7,7 @@
 #include<unordered_map>
 #include<unordered_set>
 #include<string>
+#include<algorithm>
 
 #define noErorr 0
 #define PhaseNameError 1
@@ -3146,12 +3147,12 @@ std::vector<std::pair<std::string, double>> EllipsoidalCorrection::parsePhaseNam
 
 bool EllipsoidalCorrection::findNames(const std::string &s, int x, const std::vector<double> &surfaceDistances, int y, std::vector<std::pair<std::string, double>> &ret) const{
 
-    if (x == s.size()) {
+    if (x == (int)s.size()) {
 
-        return y + 1 == surfaceDistances.size();
+        return y + 1 == (int)surfaceDistances.size();
     }
 
-    for (int i = 0; i < availablePhases.size(); ++i) {
+    for (int i = 0; i < (int)availablePhases.size(); ++i) {
 
         if (s.substr(x, availablePhases[i].size()) == availablePhases[i]) {
 
@@ -3161,7 +3162,7 @@ bool EllipsoidalCorrection::findNames(const std::string &s, int x, const std::ve
             // get phase surfacing numbers.
             int surfaceCnt = (twiceSurfacingPhases.find(availablePhases[i]) != twiceSurfacingPhases.end() ? 2 : 1);
 
-            if (y + surfaceCnt >= surfaceDistances.size()) {
+            if (y + surfaceCnt >= (int)surfaceDistances.size()) {
 
                 continue;
             }
@@ -3345,7 +3346,7 @@ int EllipsoidalCorrection::countLegs(const std::string &inputPhase) const {
 
     int ret = 0;
 
-    for (int i = 0; i < inputPhase.size(); ++i) {
+    for (int i = 0; i < (int)inputPhase.size(); ++i) {
 
         if (::isupper(inputPhase[i]) || (i == 0 && ::islower(inputPhase[i]))) {
 
